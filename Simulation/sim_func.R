@@ -98,7 +98,7 @@ sim <- function(num.trials,
       amta.tot <- rbind(amta.tot, amta)
       wpb.tot <- rbind(wpb.tot, wpb)
       
-      print(trial)
+      if(trial%%100 == 0) print(trial) 
     }
   }
   
@@ -106,6 +106,9 @@ sim <- function(num.trials,
     amta.tot$sdev <- sd(str)
     wpb.tot$sdev <- sd(str)
   }
+  
+  amta.tot$cat <- type
+  wpb.tot$cat <- type
   
   return(list(amta = amta.tot, wpb = wpb.tot))
 }

@@ -1,11 +1,14 @@
 # rm(list=ls())
-setwd("~/Dropbox/Tabulation Sub-Committee/Simulation")
+# setwd("~/Dropbox/Tabulation Sub-Committee/Simulation")
 source('sim_func.R')
 
-# Simulate two tournaments with the same set of teams and Round 1 assignments
-# Then, pair rounds 2-4 using AMTA and WPB
+set.seed(628)
 
-x <- sim(1, 'random')
-y <- sim(1, 'power')
-z <- sim(1, 'fold')
-a <- sim(1, 'envelope')
+rand  <- sim(5000, 'random', sdev = 7)
+power <- sim(5000, 'power')
+fold  <- sim(5000, 'fold')
+envel <- sim(5000, 'envelope')
+
+rm(list=lsf.str())
+
+save.image('all_r1.RData')
