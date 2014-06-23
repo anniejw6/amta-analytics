@@ -1,3 +1,116 @@
+##### Wrapper #########
+sim <- function(num.trials,
+                type = c('random', 'power', 'fold', 'envelope'),
+                qualwin = 14,
+                sdev = 10){
+  
+  type <- match.arg(type)
+  
+  # Set base values
+  num.teams = 24
+  base = 1 # Minimum number of ballots that teams start out with for wpb
+  
+  amta.tot <- NULL
+  wpb.tot <- NULL
+  
+  if(type == 'random'){
+    num.trials <- num.trials/length(sdev)
+  } 
+  
+  for (trial in 1:num.trials){
+    for (k in 1:length(sdev)){
+      amta <- NULL
+      wpb <- NULL
+      
+      #Generate data frames
+      amta <- data.frame(team = 1:num.teams)
+      amta[,genNames("AMTA")] <- NA
+      
+      wpb <- data.frame(team = 1:num.teams, base = base)
+      wpb[,genNames("wpb")] <- NA
+      
+      # Round 1
+      r1 <- c("r1side", "r1opp")
+      
+      if(type == 'random'){
+        
+        # Generate Teams and Strength
+        amta$str <- wpb$str <- round(rnorm(num.teams, 70, sdev[k]), 0)
+        amta$true_rank <- wpb$true_rank <- rank(-amta$str)
+        
+        #Pair Round 1
+        amta[, r1] <- wpb[, r1] <- genR1(amta, num.teams)
+        
+      } else {
+        # Generate Teams and Strength
+        str <- c(81:71, 70, 70, 69:59)
+        amta$str <- wpb$str <- str
+        amta$true_rank <- wpb$true_rank <- rank(-amta$str)
+      }
+      
+      # Pair Round 1 if not Random
+      if (type == 'power'){
+        amta[, r1] <- wpb[, r1] <- r1power(amta)
+      } else if (type == 'fold'){
+        amta[, r1] <- wpb[, r1] <- r1fold(amta)
+      } else if (type == 'envelope'){
+        amta[, r1] <- wpb[, r1] <- r1envelope(amta)
+      }
+      
+      for(i in 1:4){
+        # Calculate PD
+        amta[, paste0('r',i, c("opp.str", "pd"))] <- calcPD(amta, i)
+        wpb[, paste0('r',i, c("opp.str", "pd"))] <- calcPD(wpb, i)
+        
+        # Calculate WPB Measures
+        wpb[, paste("r", i, c("round.pb", "cum.pb"), sep ="")] <- calcPB(i, wpb, qualwin)
+        wpb[, c(paste0("r", 1:4, "round.wpb"), paste0("r", i, "cum.wpb"))] <- calcWPB(i, wpb)
+        
+        # Calculate AMTA Measures 
+        amta[, paste0("r", i, c("round.bal", "cum.bal"))] <- calcBal(i, amta)
+        amta[, c(paste0("r", 1:4, "round.cs"), paste0("r", i, "cum.cs"))] <- calcCS(i, amta)
+        
+        # Calculate Point Differential
+        amta[, paste0("r", i, "cum.pd")] <- calcCumPD(amta)
+        wpb[, paste0("r", i, "cum.pd")] <- calcCumPD(wpb)
+        
+        # Rank Round 1
+        amta[,paste0("r", i,"rank")] <- with(amta, rankTrad(get(paste0("r", i, "cum.bal")), 
+                                                            get(paste0("r", i, "cum.cs")),
+                                                            get(paste0("r", i, "cum.pd"))))
+        wpb[,paste0("r", i,"rank")] <- with(wpb, rankWPB(get(paste0("r", i, "cum.wpb")), 
+                                                         get(paste0("r", i, "cum.pb")),
+                                                         get(paste0("r", i, "cum.pd"))))
+        
+        #Pair next round
+        if(i < 4){
+          amta[,paste0("r", i + 1, c("side","opp"))] <- pairTeams(amta, i + 1)
+          wpb[,paste0("r", i + 1, c("side","opp"))] <- pairTeams(wpb, i + 1)    
+        }
+        
+      }
+      amta$trial <- trial
+      wpb$trial <- trial
+      
+      amta$sdev <- sdev[k]
+      wpb$sdev <- sdev[k]
+      
+      amta.tot <- rbind(amta.tot, amta)
+      wpb.tot <- rbind(wpb.tot, wpb)
+      
+      print(trial)
+    }
+  }
+  
+  if(type != 'random'){
+    amta.tot$sdev <- sd(str)
+    wpb.tot$sdev <- sd(str)
+  }
+  
+  return(list(amta = amta.tot, wpb = wpb.tot))
+}
+
+
 #### Set-up ######
 # Generate Column Names
 genNames = function(type = "AMTA"){
@@ -12,7 +125,7 @@ genNames = function(type = "AMTA"){
 
 ##### Round 1: Random Pairing ######
 # For Round 1, assign teams randomly
-genR1 = function(mat1){
+genR1 = function(mat1, num.teams){
   mat1$r1side <- sample(rep(0:1, num.teams/2), num.teams)
   mat1$r1opp[mat1$r1side == 0] <- 
     sample(mat1$team[mat1$r1side == 1], num.teams/2)
@@ -24,14 +137,17 @@ genR1 = function(mat1){
 r1fold <- function(mat1){
   
   mat1$ranks <- 1:nrow(mat1)
-  
-  # mat1 <- mat1[order(mat1$ranks), ]
 
-  mat1$r1opp <- c(sample(13:24, 12), sample(1:12, 12))
+  #Match Pairs
+  mat1$r1opp[1:12] <- sample(13:24, 12)
   
-  mat1$r1side<- as.vector(replicate(12, sample(0:1,2)))
+  # Assign Sides
+  mat1$r1side[1:12] <- as.vector(replicate(6, sample(0:1,2)))
   
-  mat1 <- mat1[order(mat1$team),]
+  # Match Assignments
+  m <- match(mat1$team[is.na(mat1$r1opp)], mat1$r1opp)
+  mat1$r1opp[is.na(mat1$r1opp)] <- mat1$team[m]
+  mat1$r1side[is.na(mat1$r1side)] <- ifelse(mat1$r1side[m] == 0, 1, 0)
   
   return(mat1[,c("r1side", "r1opp")])
 
@@ -52,6 +168,24 @@ r1power <- function(mat1){
  mat1 <- mat1[order(mat1$team),]
   
   return(mat1[,c("r1side", "r1opp")])
+}
+
+r1envelope <- function(mat1){
+  
+  mat1$ranks <- 1:nrow(mat1)
+  
+  #Match Pairs
+  mat1$r1opp <- nrow(mat1):1
+  
+  # Assign Sides
+  mat1$r1side[1:12] <- as.vector(replicate(6, sample(0:1,2)))
+  
+  # Match Assignments
+  m <- match(mat1$team[is.na(mat1$r1side)], mat1$r1opp)
+  mat1$r1side[is.na(mat1$r1side)] <- ifelse(mat1$r1side[m] == 0, 1, 0)
+  
+  return(mat1[,c("r1side", "r1opp")])
+  
 }
 
 ##### Calculating Strength ######
@@ -75,6 +209,7 @@ calcPD = function(mat1, round){
 #### WPB Measures #####
 #Calculate PB and WPB
 calcPB <- function(round, mat1 = wpb, max = qualwin){
+  
   genPB <- function(x, max = max){
     if(x > max) pb <- 1
     else if(x < max * -1) pb <- 0
@@ -82,8 +217,9 @@ calcPB <- function(round, mat1 = wpb, max = qualwin){
     else pb <- 0.5*(1 - logb(1 - x, max + 1))
     return(pb)
   }
-  mat1[,paste("r",round,"round.pb", sep ="")] <- 
-    with(mat1, sapply(get(paste("r", round, "pd", sep = "")), function(x) genPB(x, max)))
+  
+  mat1[,paste0("r",round,"round.pb")] <- 
+    with(mat1, sapply(get(paste0("r", round, "pd")), function(x) genPB(x, max)))
   pbtot = apply(mat1[, c("base", paste("r", 1:4, "round.pb", sep = ""))], 1, function(x) sum(x, na.rm= TRUE))
   return(data.frame(mat1[,paste("r",round,"round.pb", sep ="")], pbtot))
 }
