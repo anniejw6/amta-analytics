@@ -24,6 +24,7 @@ x <- lm(r4rank ~ r1fin*type, dat)
 summary(x)
 
 ##### Error by R1PD - 70 Only #####
+
 ggplot(dat, aes(x = r1pd, y = r4rank, colour = type)) + 
   geom_smooth() + theme_bw()
 
