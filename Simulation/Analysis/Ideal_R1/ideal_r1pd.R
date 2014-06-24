@@ -11,19 +11,31 @@ all  <- clean(rand)
 
 # Subset to only strength = 70
 dat <- subset(all, str == 70)
-dat$r1fin <- ifelse(dat$r1pd > 0, 1, 
-                    ifelse(dat$r1pd == 0, 0.5, 0))
+dat$r1fin <- sapply(dat$r1pd, function(x) if(x > 0) 1 else if(x == 0) 0.5 else 0)
 
+# T-Test
 attach(dat)
 t.test(r4rank[r1pd > 0 & type == 'amta'], r4rank[r1pd < 0 & type == 'amta'])
 t.test(r4rank[r1pd > 0 & type == 'wpb'], r4rank[r1pd < 0 & type == 'wpb'])
 detach(dat)
 
+# Regression
 x <- lm(r4rank ~ r1fin*type, dat)
 summary(x)
 
+##### Error by R1PD - 70 Only #####
+ggplot(dat, aes(x = r1pd, y = r4rank, colour = type)) + 
+  geom_smooth() + theme_bw()
 
-##### All #####
+dat2 <- ddply(dat, .(r1fin, type), 
+              summarise, final= mean(r4rank))
+
+ggplot(dat2, aes(x = factor(r1fin), y = final, fill = type)) + 
+  geom_bar(stat="identity", position=position_dodge()) +
+  theme_bw()
+
+
+##### Error by R1PD - All #####
 
 all$err <- with(all, true_rank - r4rank)
 
@@ -39,23 +51,7 @@ p + facet_wrap( ~ true_rank, nrow = 4) + geom_hline(yintercept=0) + theme_bw()
 
 
 ##### Other ######
-#dat1 <- ddply(dat, .(r1pd, type), summarise, final = mean(r4rank))
 
-#ggplot(dat1, aes(x = r1pd, y = final, colour = type)) + 
-#  geom_point() + geom_smooth() + theme_bw()
-
-#ggplot(dat, aes(x = r1pd, y = r2opp.str, colour = type)) + 
-#  geom_smooth() + theme_bw()
-
-ggplot(dat, aes(x = r1pd, y = r4rank, colour = type)) + 
-  geom_smooth() + theme_bw()
-
-dat2 <- ddply(dat, .(r1fin, type), 
-              summarise, final= mean(r4rank))
-
-ggplot(dat2, aes(x = factor(r1fin), y = final, fill = type)) + 
-  geom_bar(stat="identity", position=position_dodge()) +
-  theme_bw()
 
 #dat3 <- ddply(dat, .(r1fin, type), summarise,
 #              r2 = mean(r2opp.str))

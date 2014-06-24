@@ -1,6 +1,7 @@
 ##### Wrapper #########
 sim <- function(num.trials,
-                type = c('random', 'power', 'fold', 'envelope'),
+                type = c('random', 'power', 'fold', 'envelope', 'pseudo-rand'),
+                str = c(81:71, 70, 70, 69:59),
                 qualwin = 14,
                 sdev = 10){
   
@@ -32,24 +33,22 @@ sim <- function(num.trials,
       # Round 1
       r1 <- c("r1side", "r1opp")
       
+      # Generate Teams and Strength
       if(type == 'random'){
-        
-        # Generate Teams and Strength
+
         amta$str <- wpb$str <- round(rnorm(num.teams, 70, sdev[k]), 0)
         amta$true_rank <- wpb$true_rank <- rank(-amta$str)
-        
-        #Pair Round 1
-        amta[, r1] <- wpb[, r1] <- genR1(amta, num.teams)
-        
+
       } else {
-        # Generate Teams and Strength
-        str <- c(81:71, 70, 70, 69:59)
+
         amta$str <- wpb$str <- str
         amta$true_rank <- wpb$true_rank <- rank(-amta$str)
       }
       
-      # Pair Round 1 if not Random
-      if (type == 'power'){
+      # Pair Round 1 
+      if(type %in% c('random', 'pseudo-rand')){
+        amta[, r1] <- wpb[, r1] <- genR1(amta, num.teams)
+      } else if (type == 'power'){
         amta[, r1] <- wpb[, r1] <- r1power(amta)
       } else if (type == 'fold'){
         amta[, r1] <- wpb[, r1] <- r1fold(amta)
