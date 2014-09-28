@@ -1,0 +1,9 @@
+My big question was where the true strength and true ordering comes from--but I guess you just randomly assigned the values since they don't correspond to real teams?
+
+Yes.
+
+Do you have any suggestions on how to make this clearer? I mean, this assignment is really the biggest advantage of this system. You can tell exactly what happens to a team of a given strength.
+
+Thanks for reading this!
+
+I think it'd be helpful to have a definition either in text or on the side that explains what true strength or true ordering refers to. You could say something about how true ordering here refers to the most accurate ordering of the team and true strength refers to the most accurate strength of the teams relative to each other.  While this of course would be difficult to assign to existing teams, since this is a simulation you can assign fictional teams true strengths without biasing results; in fact, being able to assign these values arbitrarily is one of the strengths of the system.  
