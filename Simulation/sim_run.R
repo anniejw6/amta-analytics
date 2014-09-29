@@ -7,10 +7,10 @@ set.seed(628)
 str <- c(81:71, 70, 70, 69:59)
 
 #rand  <- sim(5000, 'random', sdev = 7)
-power <- sim(5000, 'power', str = sample(str))
-fold  <- sim(5000, 'fold', str = sample(str))
-envel <- sim(5000, 'envelope', str = sample(str))
-pseud <- sim(5000, 'pseudo-rand', str = sample(str))
+power <- sim(5000, 'power', str = str)
+fold  <- sim(5000, 'fold',  str = str)
+envel <- sim(5000, 'envelope', str = str)
+pseud <- sim(5000, 'pseudo-rand', str = str)
 
 rm(list=lsf.str())
 

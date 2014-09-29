@@ -38,7 +38,7 @@ sim <- function(num.trials,
 
       } else {
 
-        amta$str <- wpb$str <- str
+        amta$str <- wpb$str <- sample(str)
         amta$true_rank <- wpb$true_rank <- rank(-amta$str)
       }
       
