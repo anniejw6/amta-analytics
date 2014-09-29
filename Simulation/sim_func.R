@@ -138,6 +138,9 @@ genR1 = function(mat1, num.teams){
 
 r1fold <- function(mat1){
   
+  # Order
+  mat1 <- mat1[order(mat1$true_rank), ]
+  
   # Separate into brackets
   mat1$ranks <- 1:nrow(mat1)
   
@@ -152,7 +155,7 @@ r1fold <- function(mat1){
   mat1$r1opp[is.na(mat1$r1opp)] <- mat1$team[m]
   mat1$r1side[is.na(mat1$r1side)] <- ifelse(mat1$r1side[m] == 0, 1, 0)
   
-  return(mat1[,c("r1side", "r1opp")])
+  return(mat1[order(mat1$team), c("r1side", "r1opp")])
 
 }
 
