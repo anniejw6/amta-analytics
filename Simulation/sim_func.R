@@ -30,9 +30,6 @@ sim <- function(num.trials,
       wpb <- data.frame(team = 1:num.teams, base = base)
       wpb[,genNames("wpb")] <- NA
       
-      # Round 1
-      r1 <- c("r1side", "r1opp")
-      
       # Generate Teams and Strength
       if(type == 'random'){
 
@@ -46,6 +43,9 @@ sim <- function(num.trials,
       }
       
       # Pair Round 1 
+      # Round 1
+      r1 <- c("r1side", "r1opp")
+      
       if(type %in% c('random', 'pseudo-rand')){
         amta[, r1] <- wpb[, r1] <- genR1(amta, num.teams)
       } else if (type == 'power'){
@@ -138,10 +138,11 @@ genR1 = function(mat1, num.teams){
 
 r1fold <- function(mat1){
   
+  # Separate into brackets
   mat1$ranks <- 1:nrow(mat1)
-
+  
   #Match Pairs
-  mat1$r1opp[1:12] <- sample(13:24, 12)
+  mat1$r1opp[1:12] <- sample(mat1$team[13:24], 12)
   
   # Assign Sides
   mat1$r1side[1:12] <- as.vector(replicate(6, sample(0:1,2)))
@@ -222,7 +223,7 @@ calcPB <- function(round, mat1 = wpb, max = qualwin){
   
   mat1[,paste0("r",round,"round.pb")] <- 
     with(mat1, sapply(get(paste0("r", round, "pd")), function(x) genPB(x, max)))
-  pbtot = apply(mat1[, c("base", paste("r", 1:4, "round.pb", sep = ""))], 1, function(x) sum(x, na.rm= TRUE))
+  pbtot = apply(mat1[, c("base", paste0("r", 1:4, "round.pb"))], 1, function(x) sum(x, na.rm= TRUE))
   return(data.frame(mat1[,paste("r",round,"round.pb", sep ="")], pbtot))
 }
 
