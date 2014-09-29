@@ -161,9 +161,10 @@ r1fold <- function(mat1){
 
 r1power <- function(mat1){
   
-  mat1$ranks <- 1:nrow(mat1)
+  # Order
+  mat1 <- mat1[order(mat1$true_rank), ]
   
- # mat1 <- mat1[order(mat1$ranks), ]
+  mat1$ranks <- 1:nrow(mat1)
   
   mat1$r1opp <- c(matrix(c(mat1$team[c(FALSE, TRUE)], 
                            mat1$team[c(TRUE, FALSE)]), 
@@ -173,15 +174,17 @@ r1power <- function(mat1){
  
  mat1 <- mat1[order(mat1$team),]
   
-  return(mat1[,c("r1side", "r1opp")])
+  return(mat1[order(mat1$team),c("r1side", "r1opp")])
 }
 
 r1envelope <- function(mat1){
   
+  #Order
+  mat1 <- mat1[order(mat1$true_rank), ]
   mat1$ranks <- 1:nrow(mat1)
   
   #Match Pairs
-  mat1$r1opp <- nrow(mat1):1
+  mat1$r1opp <- mat1$team[nrow(mat1):1]
   
   # Assign Sides
   mat1$r1side[1:12] <- as.vector(replicate(6, sample(0:1,2)))
@@ -190,7 +193,7 @@ r1envelope <- function(mat1){
   m <- match(mat1$team[is.na(mat1$r1side)], mat1$r1opp)
   mat1$r1side[is.na(mat1$r1side)] <- ifelse(mat1$r1side[m] == 0, 1, 0)
   
-  return(mat1[,c("r1side", "r1opp")])
+  return(mat1[order(mat1$team),c("r1side", "r1opp")])
   
 }
 
