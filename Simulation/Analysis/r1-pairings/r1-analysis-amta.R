@@ -39,6 +39,7 @@ processR1 <- function(dat, category, seed = 628){
   df <- df[, c('str', 'r1opp.str')]
   df$str <- rank(-df$str)
   df$r1opp.str <- rank(-df$r1opp.str)
+  df <- df[order(df$str), ]
   df <- stack(df)
   df$courtroom <- LETTERS[1:24]
   return(df)
@@ -49,7 +50,7 @@ for(i in unique(all$cat)){
   # Subset data frame and clean
   plot <- ggplot(data = processR1(dat = all, category = i), 
                  aes(x = factor(ind, levels = c('str', 'r1opp.str')), 
-                     y = factor(values, levels = rev(unique(df$values))), 
+                     y = factor(values, levels = rev(unique(values))), 
                      group = courtroom, colour = courtroom, 
                      label = values)) + 
     geom_line() + geom_point() +  
