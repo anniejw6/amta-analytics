@@ -34,7 +34,7 @@ all$sos <- with(all, (r1opp.str + r2opp.str + r3opp.str + r4opp.str)/4)
 
 ## Get data structure
 processR1 <- function(dat, category, seed = 628){
-  set.seed(628)
+  set.seed(seed)
   df <- subset(dat[dat$trial == sample(1:max(dat$trial), 1), ], cat == category)
   df <- df[, c('str', 'r1opp.str')]
   df$str <- rank(-df$str)
@@ -67,7 +67,7 @@ for(i in unique(all$cat)){
                        panel.grid.minor.x=element_blank(), 
                        panel.grid.major.x=element_blank(),
                        axis.ticks = element_blank())
-  
+  print(plot)
   ggsave(filename = tolower(paste0('graphs/',i, '_demo.pdf')), 
          plot = plot, width = 5, height = 5)
 }
