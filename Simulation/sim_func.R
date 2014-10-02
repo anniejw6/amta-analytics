@@ -235,6 +235,11 @@ calcPB <- function(round, mat1 = wpb, max = qualwin){
 
 
 calcWPB <- function(round, mat1 = wpb){
+  
+  # Multiply each round's PB by the cumulative PB of the team you faced in that round
+  # EX, After Round 3, you multiply Round 1 PB earned * Cumulative PB of Round 1 Opponent after Round 3,
+  # including the adjustment
+  
   wpb.round = matrix(NA, nrow = nrow(mat1), ncol = 4)
   if(round > 1){
     for (j in 1:4){
