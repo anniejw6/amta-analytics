@@ -7,6 +7,7 @@ library(xtable)
 
 # Prints pretty things
 printTab <- function(x){
+  x <- xtable(x)
   print(x, type = 'html', include.rownames = F, 
         sanitize.text.function = force, 
         sanitize.rownames.function = NULL, 
@@ -37,15 +38,49 @@ readSpreadsheet <- function(url, sheet = 1){
   dfClean(df)
 }
 
-cleanTab <- function(dat){
-  del <- c(paste0('S.', 1:3), '','S', 'CURRENT_WPB', 'CURRENT_RANK', 'CURRENT_BAL', 'CURRENT_CS', 'CURRENT_PD')
+cleanTab <- function(dat, amta){
+  
+  # Clean up columns
+  del <- c(paste0('S.', 1:3), '','S', 'CURRENT_WPB', 'CURRENT_RANK', 
+           'CURRENT_BAL', 'CURRENT_CS', 'CURRENT_PD')
   df <- dat[, !colnames(dat) %in% del]
   df <- subset(df, TEAM != '')
+  
+  # Deal with NAs
   df[df == '#N/A'] <- NA
   df[df == 'NA'] <- NA
+  
+  # Get rid of factors
   i <- sapply(df, is.factor)
   df[i] <- lapply(df[i], as.character)
+  
   return(df)
+    
+  }
+
+tabSumm <- function(df, amta){
+  if(amta == F){
+    
+    tab <- data.frame(
+      team = df$TEAM,
+      side = df[[paste0('R', round - 1, '_SIDE')]],
+      crit1  = as.numeric(df[[paste0('R', round - 1, '_RT_WPB')]]),
+      crit2   = as.numeric(df[[paste0('R', round - 1, '_RT_PB')]]),
+      crit3   = as.numeric(df[[paste0('R', round - 1, '_RT_PD')]]),
+      stringsAsFactors = F
+    )
+    
+  } else {
+    tab <- data.frame(
+      team = df$TEAM,
+      side = df[[paste0('R', round - 1, '_SIDE')]],
+      crit1  = as.numeric(df[[paste0('R', round - 1, '_RT_BAL')]]),
+      crit2   = as.numeric(df[[paste0('R', round - 1, '_RT_CS')]]),
+      crit3   = as.numeric(df[[paste0('R', round - 1, '_RT_PD')]]),
+      stringsAsFactors = F
+    )
+  }
+  return(tab)
 }
 
 # Create data-frame of impermissible based on same school
@@ -83,10 +118,23 @@ pastOpp <- function(df, round){
 
 
 ### Make Pairs look pretty ###
-pairPretty <- function(dat = pair, impermiss = T){
+pairPretty <- function(dat = pair, amta = amta, impermiss = T){
   
   # Order by Trial
   dat <- dat[order(dat$trial, dat$side), ]
+  
+  # Set column names
+  if(amta == T){
+    crits <- c('Ballots', 'CS', 'PD')
+  } else {
+    crits <- c('WPB', 'PB', 'PD')
+  }
+  
+  x <- colnames(dat)
+  colnames(dat)[c(grep('crit1', x), 
+                  grep('crit2', x), 
+                  grep('crit3', x))] <- crits
+  
   
   # Stack P and D
   p <- subset(dat, side == 'P')
@@ -97,8 +145,9 @@ pairPretty <- function(dat = pair, impermiss = T){
   
   # Clean up Columns
   x <- x[, !grepl('side', colnames(x))]
-  x <- x[, c('p_trial', 'p_team', 'd_team', 'p_wpb', 'p_pb', 'p_pd', 'p_rank', 
-             'd_wpb', 'd_pb', 'd_pd', 'd_rank')]
+  x <- x[, c('p_trial', 'p_team', 'd_team', 
+             paste0('p_', crits), 'p_rank', 
+             paste0('d_', crits), 'd_rank')]
   colnames(x)[1] <- 'trial'
   
   # Add Impermissibles
@@ -107,14 +156,14 @@ pairPretty <- function(dat = pair, impermiss = T){
   }
   
   # Round 
-  i <- grepl('wpb|pb|pd', colnames(x))
+  i <- which(colnames(x) %in% c(paste0('p_', crits), paste0('d_', crits)))
   x[i] <- lapply(x[i], function(x) round(x, 3))
   
   return(x)
 }
 
 # rank teams by WPB, PB, PD, coin-flip
-rankWPB <- function(wpb, pb, pd, dat = tab, r = round, coinflip = 'heads'){
+rankMT <- function(dat = tab, crit1 = 'crit1', crit2 = 'crit2', crit3 = 'crit3', r = round, coinflip = 'heads'){
   
   if(coinflip == 'heads'){
     coinflip <- rank(tab$team)
@@ -123,16 +172,14 @@ rankWPB <- function(wpb, pb, pd, dat = tab, r = round, coinflip = 'heads'){
     coinflip <- -rank(tab$team)
     print('In case of ties, lower team number gets higher rank.')
   }
-  wpb <- dat[[wpb]]
-  pb <- dat[[pb]]
-  pd <- dat[[pd]]
   
-  wpb[is.na(wpb)] <- 0
-  pb[is.na(pb)] <- 0
-  pd[is.na(pd)] <- 0
+  dat[is.na(dat)] <- 0
+  crit1 <- dat[[crit1]]
+  crit2 <- dat[[crit2]]
+  crit3 <- dat[[crit3]]
   
   return(rank(-1*as.numeric(
-    interaction(wpb, pb, pd, coinflip,
+    interaction(crit1, crit2, crit3, coinflip,
                 drop = TRUE, lex.order = TRUE)))) 
 }
 
@@ -160,9 +207,9 @@ compareDist <- function(x = trial_x, all = pair, round = round, amta = F){
     }
     return(
       data.frame(
-        dist_wpb = abs(all$wpb - x$wpb),
-        dist_pb = abs(all$pb - x$pb),
-        dist_pd = abs(all$pd - x$pd),
+        dist_crit1 = abs(all$crit1 - x$crit1),
+        dist_crit2 = abs(all$crit2 - x$crit2),
+        dist_crit3 = abs(all$crit3 - x$crit3),
         dist_rank = abs(all$newRank - x$newRank),
         cat = cat
         )
@@ -204,27 +251,10 @@ compareDist <- function(x = trial_x, all = pair, round = round, amta = F){
                                           paste0(rev(x$team), collapse = '')))
   
   # Sort by distance
-  res <- res[order(res$dist_rank, res$dist_wpb, res$dist_pb, res$dist_pd), ]
+  res <- res[order(res$dist_rank, res$dist_crit1, res$dist_crit2, res$dist_crit3), ]
   res <- subset(res, dist_rank > 0) # This is the no-swap option
 
   return(res)
-}
-
-
-# Function to add metadata after pairing
-teamMeta <- function(pair, input, side, round){
-  
-  pair[[paste0(side, '_team')]] <- as.character(input[, 1])
-  pair[[paste0(side, '_WPB')]] <- as.numeric(input[, 3])
-  pair[[paste0(side, '_pb')]] <- as.numeric(input[, 4])
-  pair[[paste0(side, '_pd')]] <- as.numeric(input[, 5])
-  if(round %% 2 == 0){
-    pair[[paste0(side, '_rank')]] <- 1:nrow(pair)
-  } else {
-    pair[[paste0(side, '_rank')]] <- as.numeric(input[, 6])
-  }
-  
-  return(pair)
 }
 
 # Find Impermissibles
