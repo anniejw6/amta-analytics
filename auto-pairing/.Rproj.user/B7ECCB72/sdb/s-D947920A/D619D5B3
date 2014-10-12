@@ -1,0 +1,16 @@
+{
+    "contents" : "#' ---\n#' title: \"Round Pairing\"\n#' author: \"ajw\"\n#' ---\n#' \n#' \n\n#' This is the *next* round\nround <- 4 \n\nsource('pair_func.R')\nteams <- 'https://docs.google.com/spreadsheets/d/1REb82IzLPC3S7n93CntfAaqBETdSCDXoO6DKS9VV0ro/pubhtml?gid=0&single=true'\ntab   <- 'https://docs.google.com/spreadsheets/d/1REb82IzLPC3S7n93CntfAaqBETdSCDXoO6DKS9VV0ro/pubhtml?gid=2080568749&single=true'\n\nteams <- readSpreadsheet(teams)\ndf <- cleanTab(readSpreadsheet(tab))\n\ntab <- data.frame(\n  team = df$TEAM,\n  side = df[[paste0('R', round - 1, '_SIDE')]],\n  wpb  = as.numeric(df[[paste0('R', round - 1, '_RT_WPB')]]),\n  pb   = as.numeric(df[[paste0('R', round - 1, '_RT_PB')]]),\n  pd   = as.numeric(df[[paste0('R', round - 1, '_RT_PD')]]),\n  stringsAsFactors = F\n)\n\ntab$rank <- rankWPB(wpb = 'wpb',\n                    pb  = 'pb',\n                    pd  = 'pd', dat = tab, r = round)\n\n# Create impermissibles\nimpermiss <- rbind(sameSchool(teams),\n                   pastOpp(df))\n\npair <- data.frame(P_team = rep(NA, nrow(df)/2),\n                   D_team = NA)\n\n#if round is side-constrained:\nif(round %in% c(2,4)){\n  \n  #rank sides separately\n  needP <- tab[tab$side == 'D', ]\n  needD <- tab[tab$side == 'P', ]\n  \n  #pair highest versus highest\n  pair <- teamMeta(pair, needP[order(needP$rank), ], side = 'P', round = round)\n  pair <- teamMeta(pair, needD[order(needD$rank), ], side = 'D', round = round)\n  \n} else {\n  \n  #rank teams together\n  tab <- tab[order(tab$rank), ]\n  \n  #pair 1 vs 2, 3 vs 4, etc\n  pair <- teamMeta(pair, tab[c(T, F), ], side = 'P', round = round)\n  pair <- teamMeta(pair, tab[c(F, T), ], side = 'D', round = round)\n  \n}\n\n# Find impermissibles\npair$impermiss <- findImpermiss(pair, impermiss)\n\nswaps <- data.frame(Team1 = NA, Team2 = NA, final = NA)\n\nif(sum(pair$impermiss) == 0) print('No impermissibles')\n\n\n# resolve impermissibles\nwhile (sum(pair$impermiss) > 0){\n  \n  kable(pair)\n  \n  # Order trials by rank\n  pair <- pair[order(pair$P_rank + pair$D_rank), ]\n  \n  # set trial_x = highest trial with impermissible\n  trial_x <- pair[min(which(pair$impermiss == T)), ]\n  \n  # Compare swap distances based on WPB, PB, and PD\n  possSwaps <- compareDist(all = tab, x = trial_x, round = round)  \n  \n  writeLines('/n')\n  print(head(possSwaps))\n  \n  repeat{\n\n    # Set proposed_swap = minimum distance swap\n    proposedSwap <- possSwaps[1, ]\n    \n    # If it's allowed\n    if(!paste0(proposedSwap$p, proposedSwap$d) %in% swaps$final){\n      break\n    }\n    \n    # If it's not allowed, remove proposed_swap from possible\n    possSwaps <- possSwaps[-1, ]\n  }\n  \n  #  make proposed_swap\n  pair <- makeSwap(newSwap = proposedSwap, old = trial_x, dat = pair)\n  \n  #  insert proposed_swap in SWAP\n  swaps <- insertSwap(neW = proposedSwap, dat = swaps)\n\n  #  set n = number of impermissibles\n  pair$impermiss <- findImpermiss(pair, impermiss)\n}",
+    "created" : 1412681745302.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "3995476899",
+    "id" : "D619D5B3",
+    "lastKnownWriteTime" : 1412681815,
+    "path" : "~/scratch/amta-pairing/pair.R",
+    "project_path" : "pair.R",
+    "properties" : {
+    },
+    "source_on_save" : false,
+    "type" : "r_source"
+}
