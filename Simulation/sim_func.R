@@ -1,9 +1,13 @@
+library(plyr)
+library(reshape)
+
 ##### Wrapper #########
 sim <- function(num.trials,
                 type = c('random', 'power', 'fold', 'envelope', 'pseudo-rand'),
                 str = c(81:71, 70, 70, 69:59),
                 qualwin = 14,
-                sdev = 10){
+                sdev = 10,
+                teams = NULL){
   
   type <- match.arg(type)
   
@@ -11,8 +15,18 @@ sim <- function(num.trials,
   num.teams = 24
   base = 1 # Minimum number of ballots that teams start out with for wpb
   
+  # Set Team Values and Impermissibles
+  if(is.null(teams)){
+    teams <- data.frame(
+      University = 1:num.teams,
+      Team = 1:num.teams,
+      TeamName = 1:num.teams
+      )
+  }
+  
   amta.tot <- NULL
   wpb.tot <- NULL
+  meta.tot <- NULL
   
   if(type == 'random'){
     num.trials <- num.trials/length(sdev)
@@ -56,7 +70,13 @@ sim <- function(num.trials,
         amta[, r1] <- wpb[, r1] <- r1envelope(amta)
       }
       
+      # Fix Sides
+      amta$r1side <- ifelse(amta$r1side == 1, 'P', 'D')
+      wpb$r1side <- ifelse(wpb$r1side == 1, 'P', 'D')
+      
       for(i in 1:4){
+        
+        ##### Simulate Outcomes #####
         # Calculate PD
         amta[, paste0('r',i, c("opp.str", "pd"))] <- calcPD(amta, i)
         wpb[, paste0('r',i, c("opp.str", "pd"))] <- calcPD(wpb, i)
@@ -73,13 +93,45 @@ sim <- function(num.trials,
         amta[, paste0("r", i, "cum.pd")] <- calcCumPD(amta)
         wpb[, paste0("r", i, "cum.pd")] <- calcCumPD(wpb)
         
-        # Rank Round 1
-        amta[,paste0("r", i,"rank")] <- with(amta, rankTrad(get(paste0("r", i, "cum.bal")), 
-                                                            get(paste0("r", i, "cum.cs")),
-                                                            get(paste0("r", i, "cum.pd"))))
-        wpb[,paste0("r", i,"rank")] <- with(wpb, rankWPB(get(paste0("r", i, "cum.wpb")), 
-                                                         get(paste0("r", i, "cum.pb")),
-                                                         get(paste0("r", i, "cum.pd"))))
+        ##### Pairing #######
+        coinTie <- 'heads'
+        coinR3  <- 'heads'
+        
+        meta <- data.frame(
+          trial = trial,
+          coinTie = 'heads',
+          coinR3 = 'heads'
+          )
+        
+        nextRound <- i + 1
+        
+        # Re-Format
+        amtatab <- tabSumm(amta, amta = T, round = nextRound)
+        wpbtab  <- tabSumm(wpb, amta = F, round = nextRound)
+        
+        # Rank Teams
+        amtatab$rank <- rankMT(dat = amtatab, 
+                           crit1 = 'crit1', crit2 = 'crit2', crit3 = 'crit3', 
+                           r = nextRound, coinflip = coinTie)
+        
+        wpbtab$rank <- rankMT(dat = amtatab, 
+                               crit1 = 'crit1', crit2 = 'crit2', crit3 = 'crit3', 
+                               r = nextRound, coinflip = coinTie)
+        
+        # Define Impermissibles
+        amtaImpermiss <- rbind(sameSchool(teams),
+                           pastOpp(amta, round))
+        
+        wpbImpermiss <- rbind(sameSchool(teams),
+                               pastOpp(wpb, round))
+        
+        # Initial Pairing
+        amtaPair <- initialPair(amtatab, nextRound)
+        wpbPair  <- initialPair(wpbtab, nextRound)
+        
+        # Find Impermissibles
+        amtaFinalPair <- impermissWrap(amtaPair, amtaImpermiss)
+        wpbFinalPair  <- impermissWrap(wpbPair, wpbImpermiss)
         
         #Pair next round
         if(i < 4){
@@ -96,6 +148,7 @@ sim <- function(num.trials,
       
       amta.tot <- rbind(amta.tot, amta)
       wpb.tot <- rbind(wpb.tot, wpb)
+      meta.tot <- rbind(meta.tot, meta)
       
       if(trial%%100 == 0) print(trial) 
     }
@@ -296,8 +349,13 @@ rankTrad <- function(bal, cs, pd){
   rank(-1*as.numeric(interaction(bal, cs, pd, drop = TRUE, lex.order=TRUE)))
 }
 
-
 #### Power-Match Teams #####
+
+# Pairing
+pairTeams1 <- function(mat1, round){
+  
+}
+
 # Pairing
 pairTeams = function(mat1, round){
   
