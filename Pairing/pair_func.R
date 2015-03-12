@@ -77,7 +77,7 @@ pastOpp <- function(df, round){
   return(impermiss)
 }
 
-initialPair <- function(tab, round){
+initialPair <- function(tab, round, coin){
   pair <- tab
   
   #if round is side-constrained:
@@ -96,7 +96,7 @@ initialPair <- function(tab, round){
     pair <- pair[order(pair$rank), ]
     
     #pair 1 vs 2, 3 vs 4, etc
-    if(coinR3 == 'heads'){
+    if(coin == 'heads'){
       pair$side <- rep(c('P', 'D'))
     } else {
       pair$side <- rep(c('D', 'P'))
@@ -161,10 +161,10 @@ rankMT <- function(dat,
   
   if(coinflip == 'heads'){
     coinflip <- rank(dat$team)
-    print('In case of ties, larger team number gets higher rank.')
+  #  print('In case of ties, larger team number gets higher rank.')
   }else {
     coinflip <- -rank(dat$team)
-    print('In case of ties, lower team number gets higher rank.')
+   # print('In case of ties, lower team number gets higher rank.')
   }
   
   dat[is.na(dat)] <- 0
@@ -256,7 +256,7 @@ compareDist <- function(x = trial_x, all = pair, round = round, amta = F){
 
 ####### Wrapper for Finding Impermissibles #####
 
-impermissWrap <- function(pair, impermiss){
+impermissWrap <- function(pair, impermiss, round){
   
   # Find impermissibles
   pair$impermiss <- findImpermiss(pair, impermiss)
@@ -267,7 +267,7 @@ impermissWrap <- function(pair, impermiss){
   # If there are no impermissibles,
   if(sum(pair$impermiss) == 0){
     
-    writeLines('No impermissibles!')
+    #writeLines('No impermissibles!')
     
   } else {
     
@@ -277,8 +277,8 @@ impermissWrap <- function(pair, impermiss){
     while (sum(pair$impermiss) > 0){
       
       # Print pairings at start
-      writeLines('Current List of Pairings')
-      print(pairPretty(pair, amta = amta))
+      #writeLines('Current List of Pairings')
+      #print(pairPretty(pair, amta = amta))
       
       # set trial_x = highest trial with impermissible
       trial_x <- pair[pair$trial == pair$trial[min(which(pair$impermiss == T))], ]
@@ -292,18 +292,19 @@ impermissWrap <- function(pair, impermiss){
         proposedSwap <- possSwaps[1, ]
         
         # proposed Swap
-        writeLines('Proposed Swap')
-        print(proposedSwap)
+        #writeLines('Proposed Swap')
+        #print(proposedSwap)
         
         # If it's allowed
-        
-        if(!paste(swapList(newSwap = proposedSwap, oldSwap = trial_x), collapse = '') 
-           %in% swaps$final){
+        test <- gsub(' ', '',
+                     paste(swapList(newSwap = proposedSwap, oldSwap = trial_x), 
+                           collapse = '-'))
+        if(!test %in% swaps$final){
           break # Move on
         }
         
         # If it's not allowed, remove proposed_swap from possible
-        writeLines('Proposed swap is not possible!\n')
+        #writeLines('Proposed swap is not possible!\n')
         possSwaps <- possSwaps[-1, ]
       }
       
@@ -378,14 +379,14 @@ makeSwap <- function(newSwap = proposedSwap, old = trial_x, dat = pair){
 }
 
 # Generate Swap
-swapList <- function(newSwap = proposedSwap, oldSwap = trial_x){
+swapList <- function(newSwap, oldSwap){
   
   if(newSwap$cat == 'Keep P, Swap D'){
     neW <- c(team1 = newSwap$d,
-             team2 = trial_x$team[trial_x$side == 'D'])
+             team2 = oldSwap$team[oldSwap$side == 'D'])
   } else {
     neW <- c(team1 = newSwap$p,
-             team2 = trial_x$team[trial_x$side == 'P'])
+             team2 = oldSwap$team[oldSwap$side == 'P'])
   }
   return(neW)
 }
@@ -393,7 +394,8 @@ swapList <- function(newSwap = proposedSwap, oldSwap = trial_x){
 # Insert Swaps
 insertSwap <- function(newSwap = proposedSwap, oldSwap = trial_x, dat = swaps){
   
-  x <- swapList(newSwap = proposedSwap, oldSwap = trial_x)
+  x <- swapList(newSwap = newSwap, oldSwap = oldSwap)
+  
   # Create out combinations
   news <- data.frame(Team1 = x,
                      Team2 = rev(x),
@@ -405,7 +407,7 @@ insertSwap <- function(newSwap = proposedSwap, oldSwap = trial_x, dat = swaps){
   dat <- subset(dat, !is.na(Team1))
   # Create concatenation
   dat$final <- apply(dat, 1, function(x){
-    paste0(x[1], x[2])
+    gsub(' ', '', paste(x[1], x[2], sep = '-'))
   })
   return(dat)
 }

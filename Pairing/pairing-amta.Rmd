@@ -112,7 +112,7 @@ if(sum(pair$impermiss) == 0){
   writeLines('No impermissibles!')
   
 } else {
-  
+
   pair$newRank <- pair$rank
   
   # resolve impermissibles

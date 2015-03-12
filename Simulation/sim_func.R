@@ -21,7 +21,7 @@ sim <- function(num.trials,
       University = 1:num.teams,
       Team = 1:num.teams,
       TeamName = 1:num.teams
-      )
+    )
   }
   
   amta.tot <- NULL
@@ -33,6 +33,7 @@ sim <- function(num.trials,
   } 
   
   for (trial in 1:num.trials){
+    print(paste("TRIAL", trial))
     for (k in 1:length(sdev)){
       amta <- NULL
       wpb <- NULL
@@ -46,12 +47,12 @@ sim <- function(num.trials,
       
       # Generate Teams and Strength
       if(type == 'random'){
-
+        
         amta$str <- wpb$str <- round(rnorm(num.teams, 70, sdev[k]), 0)
         amta$true_rank <- wpb$true_rank <- rank(-amta$str)
-
+        
       } else {
-
+        
         amta$str <- wpb$str <- sample(str)
         amta$true_rank <- wpb$true_rank <- rank(-amta$str)
       }
@@ -75,6 +76,7 @@ sim <- function(num.trials,
       wpb$r1side <- ifelse(wpb$r1side == 1, 'P', 'D')
       
       for(i in 1:4){
+        #print(paste("ROUND", i))
         
         ##### Simulate Outcomes #####
         # Calculate PD
@@ -93,53 +95,64 @@ sim <- function(num.trials,
         amta[, paste0("r", i, "cum.pd")] <- calcCumPD(amta)
         wpb[, paste0("r", i, "cum.pd")] <- calcCumPD(wpb)
         
-        ##### Pairing #######
-        coinTie <- 'heads'
-        coinR3  <- 'heads'
-        
-        meta <- data.frame(
-          trial = trial,
-          coinTie = 'heads',
-          coinR3 = 'heads'
-          )
-        
-        nextRound <- i + 1
-        
-        # Re-Format
-        amtatab <- tabSumm(amta, amta = T, round = nextRound)
-        wpbtab  <- tabSumm(wpb, amta = F, round = nextRound)
-        
-        # Rank Teams
-        amtatab$rank <- rankMT(dat = amtatab, 
-                           crit1 = 'crit1', crit2 = 'crit2', crit3 = 'crit3', 
-                           r = nextRound, coinflip = coinTie)
-        
-        wpbtab$rank <- rankMT(dat = amtatab, 
-                               crit1 = 'crit1', crit2 = 'crit2', crit3 = 'crit3', 
-                               r = nextRound, coinflip = coinTie)
-        
-        # Define Impermissibles
-        amtaImpermiss <- rbind(sameSchool(teams),
-                           pastOpp(amta, round))
-        
-        wpbImpermiss <- rbind(sameSchool(teams),
-                               pastOpp(wpb, round))
-        
-        # Initial Pairing
-        amtaPair <- initialPair(amtatab, nextRound)
-        wpbPair  <- initialPair(wpbtab, nextRound)
-        
-        # Find Impermissibles
-        amtaFinalPair <- impermissWrap(amtaPair, amtaImpermiss)
-        wpbFinalPair  <- impermissWrap(wpbPair, wpbImpermiss)
+        # Rank Teams (not for Pairing)
+        amta[,paste0("r", i,"rank")] <- with(amta, rankTrad(get(paste0("r", i, "cum.bal")), 
+                                                            get(paste0("r", i, "cum.cs")),
+                                                            get(paste0("r", i, "cum.pd"))))
+        wpb[,paste0("r", i,"rank")] <- with(wpb, rankWPB(get(paste0("r", i, "cum.wpb")), 
+                                                         get(paste0("r", i, "cum.pb")),
+                                                         get(paste0("r", i, "cum.pd"))))
         
         #Pair next round
         if(i < 4){
-          amta[,paste0("r", i + 1, c("side","opp"))] <- pairTeams(amta, i + 1)
-          wpb[,paste0("r", i + 1, c("side","opp"))] <- pairTeams(wpb, i + 1)    
+          
+          ##### Pairing #######
+          coinTie <- 'heads'
+          coinR3  <- 'heads'
+          
+          meta <- data.frame(
+            trial = trial,
+            coinTie = 'heads',
+            coinR3 = 'heads'
+          )
+          
+          nextRound <- i + 1
+          
+          # Re-Format
+          amtatab <- tabSumm(amta, amta = T, round = nextRound)
+          wpbtab  <- tabSumm(wpb, amta = F, round = nextRound)
+          
+          # Rank Teams
+          amtatab$rank <- rankMT(dat = amtatab, 
+                                 crit1 = 'crit1', crit2 = 'crit2', crit3 = 'crit3', 
+                                 r = nextRound, coinflip = coinTie)
+          
+          wpbtab$rank <- rankMT(dat = amtatab, 
+                                crit1 = 'crit1', crit2 = 'crit2', crit3 = 'crit3', 
+                                r = nextRound, coinflip = coinTie)
+          
+          # Define Impermissibles
+          amtaImpermiss <- rbind(sameSchool(teams),
+                                 pastOpp(amta, nextRound))
+          
+          wpbImpermiss <- rbind(sameSchool(teams),
+                                pastOpp(wpb, nextRound))
+          
+          # Initial Pairing
+          amtaPair <- initialPair(amtatab, nextRound, coinR3)
+          wpbPair  <- initialPair(wpbtab, nextRound, coinR3)
+          
+          # Resolve Impermissibles
+          amtaFinalPair <- impermissWrap(amtaPair, amtaImpermiss, round = nextRound)
+          wpbFinalPair  <- impermissWrap(wpbPair, wpbImpermiss, round = nextRound)
+          
+          x <- paste0("r", i + 1, c("side","opp"))
+          amta[, x] <- addPairs(amtaFinalPair)
+          wpb[, x] <- addPairs(wpbFinalPair)
         }
         
       }
+      
       amta$trial <- trial
       wpb$trial <- trial
       
@@ -209,7 +222,7 @@ r1fold <- function(mat1){
   mat1$r1side[is.na(mat1$r1side)] <- ifelse(mat1$r1side[m] == 0, 1, 0)
   
   return(mat1[order(mat1$team), c("r1side", "r1opp")])
-
+  
 }
 
 r1power <- function(mat1){
@@ -222,10 +235,10 @@ r1power <- function(mat1){
   mat1$r1opp <- c(matrix(c(mat1$team[c(FALSE, TRUE)], 
                            mat1$team[c(TRUE, FALSE)]), 
                          2, byrow = T))
- 
- mat1$r1side<- as.vector(replicate(12, sample(0:1,2)))
- 
- mat1 <- mat1[order(mat1$team),]
+  
+  mat1$r1side<- as.vector(replicate(12, sample(0:1,2)))
+  
+  mat1 <- mat1[order(mat1$team),]
   
   return(mat1[order(mat1$team),c("r1side", "r1opp")])
 }
@@ -352,39 +365,19 @@ rankTrad <- function(bal, cs, pd){
 #### Power-Match Teams #####
 
 # Pairing
-pairTeams1 <- function(mat1, round){
+addPairs <- function(finalPair){
   
-}
-
-# Pairing
-pairTeams = function(mat1, round){
+  finalPair <- finalPair[order(finalPair$trial), ]
+  d.teams <- subset(finalPair, side == 'D')
+  p.teams <- subset(finalPair, side == 'P')
   
-  side = mat1[,paste("r",round - 1,"side", sep ="")]
-  ranks = mat1[,paste("r",round - 1,"rank", sep ="")]
-  team = mat1$team
+  d.teams$opp <- p.teams$team
+  p.teams$opp <- d.teams$team
   
-  if (round %% 2 == 0){
-    
-    d.rank <- rank(ranks[side == 0], ties.method = "random")
-    p.rank <- rank(ranks[side == 1], ties.method = "random")
-    
-    total <- rep(NA, length(side))
-    
-    total[side == 0] <- subset(team, side == 1)[match(d.rank, p.rank)]
-    total[side == 1] <- match(team[side == 1], total)
-    
-    side.new <- (side - 1) * -1
-    
-    return(data.frame(side.new, total))
-  } else {
-    
-    ranks <- rank(ranks, ties.method = "random")
-    x <- data.frame(team, ranks)
-    x <- x[order(x$ranks), ]
-    x$side.new <- rep(0:1, length(x$team)/2)
-    x$new <- c(matrix(c(x$team[x$side.new == 1], x$team[x$side.new == 0]), 2, byrow = T)) 
-    x <- x[order(x$team),]
-    
-    return(data.frame(x$side.new, x$new))
-  }
+  x <- c('team', 'side', 'opp')
+  x <- rbind(d.teams[, x], p.teams[, x])
+  x <- x[order(x$team), ]
+  
+  return(x[ , c('side', 'opp')])
+  
 }
