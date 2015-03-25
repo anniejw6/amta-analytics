@@ -77,7 +77,7 @@ pastOpp <- function(df, round){
   return(impermiss)
 }
 
-initialPair <- function(tab, round, coin){
+initialPair <- function(tab, round, coin, pp = F){
   pair <- tab
   
   #if round is side-constrained:
@@ -85,7 +85,15 @@ initialPair <- function(tab, round, coin){
     
     #rank sides separately
     pair$side <- ifelse(tab$side == 'P', 'D', 'P')  
-    pair <- ddply(pair, .(side), mutate, rank = rank(rank))
+    
+    if(pp == F){
+      pair <- ddply(pair, .(side), mutate, rank = rank(rank))
+    } else if(pp == T){
+      # High-Low
+      pair$rank[pair$side == 'P'] <- rank(pair$rank[pair$side == 'P'])
+      pair$rank[pair$side == 'D'] <- rank(-pair$rank[pair$side == 'D'])
+      
+    }
     
     #pair highest versus highest
     pair <- pair[order(pair$rank, pair$side), ]
@@ -105,7 +113,10 @@ initialPair <- function(tab, round, coin){
     
   }
   
-  pair$trial <- rep(1:(nrow(pair)/2), each = 2)
+  if(nrow(pair) > 0){
+    pair$trial <- rep(1:(nrow(pair)/2), each = 2)
+  }
+  
   return(pair)
 }
 

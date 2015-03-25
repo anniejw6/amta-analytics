@@ -8,6 +8,7 @@ set.seed(628)
 
 str <- c(81:71, 70, 70, 69:59)
 
+str <- c(120:110, 70, 70, 69:59)
 #rand  <- sim(5000, 'random', sdev = 7)
 pseud <- sim(5000, 'pseudo-rand', str = str)
 power <- sim(5000, 'power', str = str)

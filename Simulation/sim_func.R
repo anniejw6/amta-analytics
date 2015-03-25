@@ -7,7 +7,8 @@ sim <- function(num.trials,
                 str = c(81:71, 70, 70, 69:59),
                 qualwin = 14,
                 sdev = 10,
-                teams = NULL){
+                teams = NULL,
+                pp = F){
   
   type <- match.arg(type)
   
@@ -138,17 +139,90 @@ sim <- function(num.trials,
           wpbImpermiss <- rbind(sameSchool(teams),
                                 pastOpp(wpb, nextRound))
           
-          # Initial Pairing
-          amtaPair <- initialPair(amtatab, nextRound, coinR3)
-          wpbPair  <- initialPair(wpbtab, nextRound, coinR3)
+          if(i == 3 && pp == T){
+            
+            #### AMTA Power - Protecting #####
+            
+            b <- amtatab$crit1[order(amtatab$crit1, decreasing = T)]
+            
+            #  Find Thresholds
+            first_out <- b[7] # Assuming ORCs
+
+            # Separate into Brackets
+            
+            sec <- which(amtatab$crit1 >= (first_out + 1.5))
+            sec <- c(sec, which(amtatab$crit1 <= (first_out - 1)))
+            
+            amta_secd_tab <- amtatab[sec, ]
+            amta_prim_tab <- amtatab[-sec, ]
+            
+            # Deal with Odd Numbes
+            if(nrow(amta_prim_tab) %% 2 == 1){
+              
+              amta_prim_tab <- amta_prim_tab[order(amta_prim_tab$crit1, decreasing = T),]
+              nr <- nrow(amta_prim_tab)
+              
+              if(abs(amta_prim_tab$crit1[nr] - b[6]) > 1){ # assuming ORCs
+                
+                amta_secd_tab <- amta_secd_tab[order(amta_secd_tab$crit1, decreasing = T),]
+                
+                amta_prim_tab <- rbind(amta_prim_tab,
+                                       amta_secd_tab[1,])
+                
+                amta_secd_tab <- amta_secd_tab[-1, ]
+                
+              } else {
+                
+                amta_secd_tab <- rbind(amta_secd_tab,
+                                       amta_prim_tab[nr, ])
+                
+                amta_prim_tab <- amta_prim_tab[-nr, ]
+                
+              }
+              
+            }
+            
+            # Inital Pairing
+            amta_prim_pair <- initialPair(amta_prim_tab, nextRound, coinR3, pp = T)
+            amta_secd_pair <- initialPair(amta_secd_tab, nextRound, coinR3, pp = F)
+            
+            # Resolve Impermissibles
+            amtaprimFinal <- impermissWrap(amta_prim_pair, amtaImpermiss, round = nextRound)
+            amtasecdFinal <- impermissWrap(amta_secd_pair, amtaImpermiss, round = nextRound)
+            
+            # Fix Trial Numbers
+            amtasecdFinal$trial <- amtasecdFinal$trial + nrow(amtaprimFinal)/2
+            
+            # Recombine
+            amtaFinal <- rbind(amtaprimFinal, amtasecdFinal)
+            
+            #### No Change to WPB ######
+            
+            # Initial Pairing
+            wpbPair  <- initialPair(wpbtab, nextRound, coinR3)
+            
+            # Resolve Impermissibles
+            wpbFinalPair  <- impermissWrap(wpbPair, wpbImpermiss, round = nextRound)
+            
+            
+          } else {
+            
+            # Initial Pairing
+            amtaPair <- initialPair(amtatab, nextRound, coinR3)
+            wpbPair  <- initialPair(wpbtab, nextRound, coinR3)
+            
+            # Resolve Impermissibles
+            amtaFinalPair <- impermissWrap(amtaPair, amtaImpermiss, round = nextRound)
+            wpbFinalPair  <- impermissWrap(wpbPair, wpbImpermiss, round = nextRound)
+            
+            
+          }
           
-          # Resolve Impermissibles
-          amtaFinalPair <- impermissWrap(amtaPair, amtaImpermiss, round = nextRound)
-          wpbFinalPair  <- impermissWrap(wpbPair, wpbImpermiss, round = nextRound)
-          
+          # Add Final Pairs
           x <- paste0("r", i + 1, c("side","opp"))
           amta[, x] <- addPairs(amtaFinalPair)
           wpb[, x] <- addPairs(wpbFinalPair)
+
         }
         
       }
