@@ -44,6 +44,20 @@ tabSumm <- function(df, amta, round){
   return(cbind(tab, x))
 }
 
+### Wrapper
+tabProcessWrap <- function(dat, trad, rr = nextRound, cf = coinTie){
+  
+  # Re-Format
+  datF <- tabSumm(dat, amta = trad, round = rr)
+  # Rank
+  datF$rank <- rankMT(dat = dat, 
+                      crit1 = 'crit1', crit2 = 'crit2', crit3 = 'crit3', 
+                      r = rr, coinflip = cf)
+  
+  return(datF)
+  
+}
+
 # Create data-frame of impermissible based on same school
 sameSchool <- function(df){
   teams <- subset(df, University %in% University[duplicated(University)])

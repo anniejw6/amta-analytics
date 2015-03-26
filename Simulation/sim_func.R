@@ -13,7 +13,7 @@ genNames = function(type = "AMTA"){
   return(x)
 }
 
-createData <- function(typ, base = NULL){
+createData <- function(typ, s, base = NULL){
   
   if(typ == 'AMTA'){
     res <- data.frame(team = 1:num.teams)
@@ -22,6 +22,9 @@ createData <- function(typ, base = NULL){
   }
   
   res[ ,genNames(typ)] <- NA
+  
+  res$str <- s
+  res$true_rank <- rank(s)
   
   return(res)
 }
@@ -118,7 +121,50 @@ r1envelope <- function(mat1){
   
 }
 
+
 ##### Calculating Strength ######
+roundOutcomesWrap <- function(dat, type, r = i, qw = qualwin){
+  
+  # Calculate PD
+  dat[, paste0('r',i, c("opp.str", "pd"))] <- calcPD(dat, r)
+  
+  if(type == 'amta'){
+    
+    # Calculate AMTA measures
+    dat[, paste0("r", r, c("round.bal", "cum.bal"))] <- calcBal(r, dat)
+    dat[, c(paste0("r", 1:4, "round.cs"), paste0("r", r, "cum.cs"))] <- calcCS(r, dat)
+    
+  }else if(type == 'wpb'){
+    
+    # Calculate WPB Measures
+    dat[, paste("r", r, c("round.pb", "cum.pb"), sep ="")] <- calcPB(r, dat, qw)
+    dat[, c(paste0("r", 1:4, "round.wpb"), paste0("r", r, "cum.wpb"))] <- calcWPB(r, dat)
+    
+  }
+  
+  # Calculate Cumulate PD
+  dat[, paste0("r", r, "cum.pd")] <- calcCumPD(dat)
+  
+  # Rank Teams
+  
+  if(type == 'amta'){
+    
+    tmp <- with(dat, rankTrad(get(paste0("r", r, "cum.bal")), 
+                              get(paste0("r", r, "cum.cs")),
+                              get(paste0("r", r, "cum.pd"))))
+  } else if(type == 'wpb'){
+    
+    tmp <- with(dat, rankWPB(get(paste0("r", r, "cum.wpb")), 
+                             get(paste0("r", r, "cum.pb")),
+                             get(paste0("r", r, "cum.pd"))))
+    
+  }
+  
+  dat[,paste0("r", r,"rank")] <- tmp
+  
+  
+  return(dat)
+}
 
 # Calculate Expected Point Differential
 calcPD = function(mat1, round){
