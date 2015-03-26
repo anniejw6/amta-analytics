@@ -8,23 +8,24 @@ genNames = function(type = "AMTA"){
   else opts <- c("round.wpb", "cum.wpb","round.pb","cum.pb")
   x <- NULL
   for(i in 1:4){
-    x <- c(x, paste("r",i,c("side","opp", "opp.str", "pd", opts, "cum.pd", "rank"), sep = ""))
+    x <- c(x, paste("r",i,c("side","opp", "opp.str", "pd", 
+                            opts, "cum.pd", "rank"), sep = ""))
   }
   return(x)
 }
 
-createData <- function(typ, s, base = NULL){
+createData <- function(typ, s, b, nt){
   
   if(typ == 'AMTA'){
-    res <- data.frame(team = 1:num.teams)
+    res <- data.frame(team = 1:nt)
   } else if(typ == 'wpb'){
-    res <- data.frame(team = 1:num.teams, base = base)
+    res <- data.frame(team = 1:nt, base = b)
   }
   
   res[ ,genNames(typ)] <- NA
   
   res$str <- s
-  res$true_rank <- rank(s)
+  res$true_rank <- rank(-s)
   
   return(res)
 }
@@ -35,13 +36,13 @@ pairR1Wrap <- function(dat, typ){
   r1 <- c("r1side", "r1opp")
   
   if (typ == 'power'){
-    dat[, r1]  <- r1power(amta)
+    dat[, r1]  <- r1power(dat)
   } else if (typ == 'fold'){
-    dat[, r1] <- r1fold(amta)
+    dat[, r1] <- r1fold(dat)
   } else if (typ == 'envelope'){
-    dat[, r1] <- r1envelope(amta)
+    dat[, r1] <- r1envelope(dat)
   } else {
-    dat[, r1] <- genR1(amta, num.teams)
+    dat[, r1] <- genR1(dat)
   }
   
   dat$r1side <- ifelse(dat$r1side == 1, 'P', 'D')
@@ -51,7 +52,10 @@ pairR1Wrap <- function(dat, typ){
 }
 
 # For Round 1, assign teams randomly
-genR1 = function(mat1, num.teams){
+genR1 = function(mat1){
+  
+  num.teams <- nrow(mat1)
+  
   mat1$r1side <- sample(rep(0:1, num.teams/2), num.teams)
   mat1$r1opp[mat1$r1side == 0] <- 
     sample(mat1$team[mat1$r1side == 1], num.teams/2)
@@ -123,44 +127,44 @@ r1envelope <- function(mat1){
 
 
 ##### Calculating Strength ######
-roundOutcomesWrap <- function(dat, type, r = i, qw = qualwin){
+roundOutcomesWrap <- function(dat, type, rr = i, qw = qualwin){
   
   # Calculate PD
-  dat[, paste0('r',i, c("opp.str", "pd"))] <- calcPD(dat, r)
+  dat[, paste0('r', rr, c("opp.str", "pd"))] <- calcPD(dat, rr)
   
   if(type == 'amta'){
     
     # Calculate AMTA measures
-    dat[, paste0("r", r, c("round.bal", "cum.bal"))] <- calcBal(r, dat)
-    dat[, c(paste0("r", 1:4, "round.cs"), paste0("r", r, "cum.cs"))] <- calcCS(r, dat)
+    dat[, paste0("r", rr, c("round.bal", "cum.bal"))] <- calcBal(rr, dat)
+    dat[, c(paste0("r", 1:4, "round.cs"), paste0("r", rr, "cum.cs"))] <- calcCS(rr, dat)
     
   }else if(type == 'wpb'){
     
     # Calculate WPB Measures
-    dat[, paste("r", r, c("round.pb", "cum.pb"), sep ="")] <- calcPB(r, dat, qw)
-    dat[, c(paste0("r", 1:4, "round.wpb"), paste0("r", r, "cum.wpb"))] <- calcWPB(r, dat)
+    dat[, paste("r", rr, c("round.pb", "cum.pb"), sep ="")] <- calcPB(rr, dat, qw)
+    dat[, c(paste0("r", 1:4, "round.wpb"), paste0("r", rr, "cum.wpb"))] <- calcWPB(rr, dat)
     
   }
   
   # Calculate Cumulate PD
-  dat[, paste0("r", r, "cum.pd")] <- calcCumPD(dat)
+  dat[, paste0("r", rr, "cum.pd")] <- calcCumPD(dat)
   
   # Rank Teams
   
   if(type == 'amta'){
     
-    tmp <- with(dat, rankTrad(get(paste0("r", r, "cum.bal")), 
-                              get(paste0("r", r, "cum.cs")),
-                              get(paste0("r", r, "cum.pd"))))
+    tmp <- with(dat, rankTrad(get(paste0("r", rr, "cum.bal")), 
+                              get(paste0("r", rr, "cum.cs")),
+                              get(paste0("r", rr, "cum.pd"))))
   } else if(type == 'wpb'){
     
-    tmp <- with(dat, rankWPB(get(paste0("r", r, "cum.wpb")), 
-                             get(paste0("r", r, "cum.pb")),
-                             get(paste0("r", r, "cum.pd"))))
+    tmp <- with(dat, rankWPB(get(paste0("r", rr, "cum.wpb")), 
+                             get(paste0("r", rr, "cum.pb")),
+                             get(paste0("r", rr, "cum.pd"))))
     
   }
   
-  dat[,paste0("r", r,"rank")] <- tmp
+  dat[,paste0("r", rr,"rank")] <- tmp
   
   
   return(dat)

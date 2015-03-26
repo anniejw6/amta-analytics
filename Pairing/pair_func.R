@@ -50,7 +50,7 @@ tabProcessWrap <- function(dat, trad, rr = nextRound, cf = coinTie){
   # Re-Format
   datF <- tabSumm(dat, amta = trad, round = rr)
   # Rank
-  datF$rank <- rankMT(dat = dat, 
+  datF$rank <- rankMT(dat = datF, 
                       crit1 = 'crit1', crit2 = 'crit2', crit3 = 'crit3', 
                       r = rr, coinflip = cf)
   

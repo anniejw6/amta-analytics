@@ -1,6 +1,6 @@
 ##### Wrapper #########
 sim <- function(num.trials,
-                type = c('random', 'power', 'fold', 'envelope', 'pseudo-rand'),
+                type = c('random', 'power', 'fold', 'envelope'),
                 str = c(81:71, 70, 70, 69:59),
                 qualwin = 14,
                 teams = NULL,
@@ -11,6 +11,7 @@ sim <- function(num.trials,
   
   # Set base values
   num.teams = 24
+  
   # Set Team Values and Impermissibles
   if(is.null(teams)){
     teams <- data.frame(
@@ -35,7 +36,7 @@ sim <- function(num.trials,
     print(paste("TRIAL", trial))
     
     #Generate data frames
-    amta <- createData('AMTA', str)
+    amta <- createData('AMTA', str, b = NULL, nt = num.teams)
     
     # Pair Round 1 
     amta <- pairR1Wrap(amta, type)
@@ -43,7 +44,7 @@ sim <- function(num.trials,
     if(wpb_opt == T){
       
       #Generate data frames
-      wpb <- createData('wpb', str, base = base)
+      wpb <- createData('wpb', str, b = base, nt = num.teams)
       
       # Pair Round 1 
       wpb <- pairR1Wrap(wpb, type)
@@ -83,7 +84,7 @@ sim <- function(num.trials,
         if(wpb_opt == T){
           
           # Reformat and Rank
-          wpbtab <- tabProcessWrap(wpb, trad = T, rr = nextRound, cf = coinTie)
+          wpbtab <- tabProcessWrap(wpb, trad = F, rr = nextRound, cf = coinTie)
           
           # Define Impermissibles
           wpbImpermiss <- rbind(sameSchool(teams), pastOpp(wpb, nextRound))
@@ -185,20 +186,22 @@ sim <- function(num.trials,
     
     amta$trial <- trial
     amta.tot <- rbind(amta.tot, amta)
+    amta.tot$cat <- type
+    
+    meta.tot <- rbind(meta.tot, meta)
+    
     
     if(wpb_opt == T){
       wpb$trial <- trial
       wpb.tot <- rbind(wpb.tot, wpb)
+      wpb.tot$cat <- type
+      
+    } else {
+      wpb.tot <- NULL
     }
-    
-    meta.tot <- rbind(meta.tot, meta)
-  
+
   }
-  
- 
-  amta.tot$cat <- type
-  wpb.tot$cat <- type
-  
-  return(list(amta = amta.tot, wpb = wpb.tot))
+
+  return(list(amta = amta.tot, wpb = wpb.tot, meta = meta.tot))
   
 }
